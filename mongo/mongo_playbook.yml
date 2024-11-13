@@ -3,7 +3,7 @@
   become: true
 
   pre_tasks:
-   - name: Update apt cache if needed.
+   - name: Update cache if needed.
      apt:
       update_cache: true
       cache_valid_time: 3600
@@ -26,36 +26,37 @@
    - name: Convert the PGP key to binary format (dearmor)
      command:
       cmd: "gpg --dearmor /tmp/mongodb-server-8.0.asc"
-      creates: /tmp/mongodb-server-8.0.gpg  # Ensuring the task only runs if the .gpg file doesn't exist
+      creates: /tmp/mongodb-server-8.0.asc.gpg  # Ensuring the task only runs if the .gpg file doesn't exist
      become: true
-
    - name: Check if the PGP key was converted successfully
      stat:
-       path: /tmp/mongodb-server-8.0.gpg
+       path: /tmp/mongodb-server-8.0.asc.gpg
      register: gpg_key_status
 
    - name: Fail if the PGP key conversion did not succeed
      fail:
-       msg: "The PGP key conversion failed. /tmp/mongodb-server-8.0.gpg not found."
+       msg: "The PGP key conversion failed. /tmp/mongodb-server-8.0.asc.gpg not found."
      when: not gpg_key_status.stat.exists
 
    - name: Move the converted PGP key to the correct location
      command:
-       cmd: mv /tmp/mongodb-server-8.0.gpg /usr/share/keyrings/mongodb-server-8.0.gpg
+       cmd: mv /tmp/mongodb-server-8.0.asc.gpg /usr/share/keyrings/mongodb-server-8.0.gpg
      become: true
 
-   - name: Add Mongo repository to APT sources
+
+
+   - name: Add Mongo repository to APT sources.
      lineinfile:
-       path: /etc/apt/sources.list.d/mongodb-org-8.0.list
-       line: "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/8.0 multiverse"
-       create: yes
-       mode: 0644
+      path: /etc/apt/sources.list.d/mongodb-org-8.0.list
+      line: "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/8.0 multiverse"
+      create: yes
+      mode: 0644
      become: true
 
-   - name: Update apt cache if needed.
+   - name: Update cache if needed.
      apt:
       update_cache: true
-      cache_valid_time: 3600
+
 
    - name: Install MongoDB packages.
      apt:
@@ -64,3 +65,7 @@
      with_items:
       - value: "mongodb-org"
 
+   - name: Start mongod service.
+     service:
+      name: mongod
+      state: started
