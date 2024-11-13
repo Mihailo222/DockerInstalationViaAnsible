@@ -1,0 +1,20 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+   - name: Add an environment variable to the remote user's shell.
+     lineinfile:
+      path: "~/.bashrc"
+      line: 'MY_ENV="my_Super_pass123"'
+      create: yes #kreira .bashrc ako on ne postoji
+      state: present #uradi task samo ako je linija present u fajlu
+     become: true
+     #kako bi obrisao ovu varijablu: state: absent samo
+
+   - name: Get the value of the environment variable we just added.
+     shell: "source ~/.bashrc && echo $MY_ENV"
+     become: true
+     args:
+      executable: /bin/bash
+      #- name: Put the env var into user's myawesomeprojectwideuser home.
