@@ -1,0 +1,22 @@
+- name: Install firewalld
+package:
+ name: firewald
+ state: present
+
+
+- name: Configure ports in firewall.
+firewalld:
+ state: "{{ item.state }}"
+ port: "{{ item.port }}"
+ zone: external
+ immediate: yes
+ permanent: yes
+with_items:
+ - {{ state: 'enabled', port: 2849/tcp  }}
+ - {{ state: 'enabled', port: 123/udp  }}
+
+- name: Ensure firewalld is running.
+service:
+ name: firewalld
+ state: started
+ enabled: yes
