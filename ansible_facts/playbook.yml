@@ -1,0 +1,20 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+          #  - name: Show all ansible facts about a server.
+          # debug:
+          #var: ansible_facts
+  - name: Gather facts about the system via setup module.
+    setup:
+  - name: Print the facts
+    debug:
+     var: "{{ item.value }}"
+    with_items:
+     - value: ansible_hostname
+     - value: ansible_facts
+     - value: ansible_hostname
+     - value: ansible_distribution
+     - value: ansible_os_family
+     - value: ansible_processor

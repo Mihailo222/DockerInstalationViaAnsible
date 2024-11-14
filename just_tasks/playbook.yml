@@ -1,0 +1,46 @@
+---
+- name: Install Apache.
+  hosts: all
+  become: true
+
+  handlers:
+   - import_tasks: handlers/apache.yml
+
+  pre_tasks:
+   - name: Load variables.
+     include_vars: "{{ item }}"
+     with_first_found:
+      - "vars/apache_{{ ansible_os_family }}.yml"
+      - "vars/apache_default.yml"
+
+  tasks:
+   - name: Ensure Apache is installed.
+     package:
+      name: "{{ apache_package }}"
+      state: present
+
+   - name: Create www directory.
+     file:
+      path: /srv/www/html
+      owner: www-data
+      state: directory
+
+   - name: Copy web site files.
+     copy:
+      src: files/index.html
+      dest: /srv/www/html/index.html
+      remote_src: false
+
+
+   - name: Copy test config file.
+     copy:
+      src: files/test.conf
+      dest: "{{ apache_config_dir }}/test.conf"
+      remote_src: false
+     notify: restart apache.
+
+   - name: Ensure Apache is running and starts at boot.
+     service:
+      name: "{{ apache_service }}"
+      state: started
+      enabled: true

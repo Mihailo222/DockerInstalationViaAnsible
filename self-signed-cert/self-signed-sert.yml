@@ -1,0 +1,98 @@
+---
+- hosts: all
+  become: true
+
+
+
+  handlers:
+
+   - name: restart apache
+     service:
+      name: apache2
+      state: restarted
+
+  pre_tasks:
+   - name: Update apt repository package list.
+     apt:
+      update_cache: true
+      cache_valid_time: 3600
+
+  tasks:
+
+   - name: Install needed packages.
+     apt:
+      name: "{{ item.value }}"
+      state: present
+     with_items:
+      - value: "apache2"
+      - value: "openssl"
+
+
+   - name: Check if the certificate already exists
+     stat:
+      path: /etc/ssl/certs/my.crt
+     register: cert_stat
+
+
+   - name: Generate a self signed certificate.
+     shell: |
+      openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+      -keyout /etc/ssl/private/my.key  \
+      -out /etc/ssl/certs/my.crt \
+      -subj "/C=US/ST=SomeState/L=SomeCity/O=MyOrg/OU=MyUnit/CN={{ ansible_hostname }}"
+     when: cert_stat.stat.exists == false #bcs this task is not idemponent
+
+
+   - name: Ensure apache ssl mode is enabled.
+     apache2_module:
+      name: ssl
+      state: present
+     notify:
+      - restart apache
+
+   - name: Disable 000-default.conf from sites enabled.
+     file:
+      path: "/etc/apache2/sites-enabled/000-default.conf"
+      state: absent
+     notify:
+      - restart apache
+
+   - name: Create .conf file for your web site's apache configuration.
+     file:
+      path: "/etc/apache2/sites-available/site.conf"
+      state: touch
+
+   - name: Fill .conf file with apache configuration.
+     copy:
+      src: "apache_files/test.conf"
+      dest: "/etc/apache2/sites-available/site.conf"
+      remote_src: false
+
+   - name: Make a symlink from sites availabled to sites enabled.
+     file:
+      src: "/etc/apache2/sites-available/site.conf"
+      dest: "/etc/apache2/sites-enabled/site.conf"
+      state: link
+     notify:
+      - restart apache
+
+   - name: Make html directory in /srv/www for static site hosting.
+     file:
+      path: /srv/www/html
+      owner: www-data
+      state: directory
+
+   - name: Make a index.html file for web site.
+     file:
+      path: "/srv/www/html/index.html"
+      state: touch
+      owner: www-data
+
+
+   - name: Copy static web site files.
+     copy:
+      src: "apache_files/index.html"
+      dest: "/srv/www/html/index.html"
+      remote_src: false
+     notify:
+      - restart apache
