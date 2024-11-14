@@ -1,0 +1,70 @@
+---
+- hosts: all
+  become: yes
+
+  vars:
+   node_apps_location: /usr/local/opt/node
+
+  handlers:
+
+   - name: restart apache
+     service:
+      name: apache2
+      state: restarted
+
+  pre_tasks:
+   - name: Update apt package list.
+     apt:
+      update_cache: yes
+      cache_valid_time: 3600
+
+  tasks:
+   - name: Install node and npm.
+     apt:
+      name: "{{ item.val }}"
+      state: present
+     with_items:
+      - val: "nodejs"
+      - val: "npm"
+
+   - name: Make node directory.
+     file:
+      path: /var/www/node
+      owner: www-data
+      group: www-data
+      state: directory
+
+
+   - name: Copy code to a specific location.
+     copy:
+      src: "node_code/{{ item.var }}"
+      dest: "/var/www/node/{{ item.var }}"
+      remote_src: false
+     with_items:
+      - var: app.js
+      - var: package.json
+
+   - name: Run npm install in /var/www/node
+     shell: |
+      cd /var/www/node && npm install
+     args:
+      chdir: /var/www/node
+
+   - name: Create .conf file for your web site's apache configuration.
+     file:
+      path: "/etc/apache2/sites-available/node.conf"
+      state: touch
+
+   - name: Fill .conf file with apache configuration.
+     copy:
+      src: "node_files/node.conf"
+      dest: "/etc/apache2/sites-available/node.conf"
+      remote_src: false
+
+   - name: Make a symlink from sites availabled to sites enabled.
+     file:
+      src: "/etc/apache2/sites-available/node.conf"
+      dest: "/etc/apache2/sites-enabled/node.conf"
+      state: link
+     notify:
+      - restart apache
