@@ -1,0 +1,8 @@
+---
+roles:
+# - name: elliotweister.osx-command-line-tools
+
+ - name: geerlingguy.homebrew
+   version: 3.1.0
+
+#list of roles I want to install
